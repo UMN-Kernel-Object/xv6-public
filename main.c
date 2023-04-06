@@ -17,23 +17,88 @@ extern char end[]; // first address after kernel loaded from ELF file
 int
 main(void)
 {
+  /*
+   * Breaks physcial memory into PAGESIZE (4096) chunks and adds each chunk
+   * to the kmem (kernel memory) structure.
+   */
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
+
+  /*
+   * Looks at previously allocated pages and creates the kernel's virtual
+   * memory space.
+   */
   kvmalloc();      // kernel page table
+
+  /*
+   * Look at CPU topology and setup processor table.
+   */
   mpinit();        // detect other processors
+
+  /*
+   * Set up interrupt scheduling and controller.
+   */
   lapicinit();     // interrupt controller
   seginit();       // segment descriptors
   picinit();       // disable pic
   ioapicinit();    // another interrupt controller
+
+  /*
+   * Set up console i/o.
+   */
   consoleinit();   // console hardware
+
+  /*
+   * Initialize the serial port with special vendor instructions.
+   */
   uartinit();      // serial port
+
+  /*
+   * Set up lock for process table.
+   */
   pinit();         // process table
+
+  /*
+   * Set up trap/interrupt events and vectors to handle hardware events and
+   * system calls.
+   */
   tvinit();        // trap vectors
+
+  /*
+   * Initializes a buffer array for use when you want fast access to an object
+   * at a later time. This is basically a place to cache objects.
+   */
   binit();         // buffer cache
+
+  /*
+   * Creates a lock for the file table of 100 files.
+   */
   fileinit();      // file table
+
+  /*
+   * Initializes interrupts for disks (HDDs, SSDs).
+   */
   ideinit();       // disk 
+
+  /*
+   * Up until this point, we've been running on 1 processor.
+   * Start up other available processors that were found in mpinit().
+   */
   startothers();   // start other processors
+
+  /*
+   * Set up page chunks... Not really sure why this is here.
+   */
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
+
+  /*
+   * Start up init process. This is the parent of each user-space process in
+   * the system.
+   */
   userinit();      // first user process
+
+  /*
+   * Finish processor setup and go to scheduler.
+   */
   mpmain();        // finish this processor's setup
 }
 
